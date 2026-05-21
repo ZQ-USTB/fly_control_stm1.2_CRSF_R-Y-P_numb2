@@ -1,0 +1,301 @@
+#include "Aircraft_ctrl_task.h"
+#include "cmsis_os.h"
+#include "remote_control.h"
+#include "tim.h"
+aircraft_control_t aircraft_control;//飞行器实例化
+#include "pid.h"
+#include "INS_task.h"
+
+pid_type_def PID_control_pitch;  // 用于PITCH
+pid_type_def PID_control_roll;   // 用于ROLL
+pid_type_def PID_control_yaw;    // YAW控制
+
+int32_t servo_value=0;
+float pitch1_angle,pitch2_angle,roll_angle,PITCH,ROLL,YAW = 0.0f;
+float pitch1_bias,pitch2_bias,roll_bias=0;
+fp32 PID_R[3] = {1.6f, 0.0f, 0.0f};
+fp32 PID_P1[3] = {1.6f, 0.0f, 0.0f};
+fp32 PID_P2[3] = {1.6f, 0.0f, 0.0f};
+float PID_P_pitch=1.6;
+float PID_P_roll=1.6;
+
+/*
+函数声明区
+*/
+void aircraft_init(aircraft_control_t*init);//初始化函数
+void aricraft_behaviour_mode_set(aircraft_control_t*aircraft_mode_set);//模式切换判断函数
+void aricraft_fly_ctrl(aircraft_control_t*aircraft_fly_ctrl);//飞行控制函数
+
+/*
+代码区
+*/
+void Aircraft_ctrl_task(void const *pvParameters)
+{
+	PID_init(&PID_control_pitch,PID_POSITION,PID_R,1000,-1000,10000);//括号里参数为：结构体、模式、增益数组、最大限幅、最小限幅、积分限幅
+	PID_init(&PID_control_roll,PID_POSITION,PID_P1,1000,-1000,10000);
+	PID_init(&PID_control_yaw,PID_POSITION,PID_P2,1000,-1000,10000);
+	
+	aircraft_init(&aircraft_control);//初始化
+	
+	 while (1)
+    {
+      aricraft_behaviour_mode_set(&aircraft_control);
+			aricraft_fly_ctrl(&aircraft_control);
+			vTaskDelay(1);
+		}
+}
+
+void aircraft_init(aircraft_control_t*init)
+{
+	 init->aircraft_behaviour=Aircraft_ZERO_FORCE;//飞行器状态初始化
+	init->last_aircraft_behaviour=Aircraft_ZERO_FORCE;
+	init->remote_data=get_remote_control_point();//遥控器数据指针获取
+	init->IMU_data=get_imu_data_point();
+	/*
+	IMU数据指针获取
+	*/
+}
+void aricraft_behaviour_mode_set(aircraft_control_t*aircraft_mode_set)
+{
+	/*
+	使用方法举例，通过遥控器的不同开关状态让飞行器处于不同模式下
+	这个判断条件也可以加上IMU，例如失控时转入Aircraft_ZERO_FORCE状态保护飞行器
+	或者遥控器断联时让飞行器停止
+	*/
+	
+	if(aircraft_mode_set->remote_data->C==2&&aircraft_mode_set->remote_data->B==0)
+	{
+		aircraft_mode_set->aircraft_behaviour=Aircraft_READY_1;
+	}
+	else if(aircraft_mode_set->remote_data->B==0&&aircraft_mode_set->remote_data->C==0)
+	{
+		aircraft_mode_set->aircraft_behaviour=Aircraft_ZERO_FORCE;
+	}
+	else if(aircraft_mode_set->remote_data->B==2&&aircraft_mode_set->remote_data->C==0)
+	{
+		aircraft_mode_set->aircraft_behaviour=Aircraft_RUN;
+	}
+//	else if(aircraft_mode_set->remote_data->B==2&&aircraft_mode_set->remote_data->C==2)
+//	{
+//		aircraft_mode_set->aircraft_behaviour=Aircraft_READY_2;
+//	}
+	
+}
+void aricraft_fly_ctrl(aircraft_control_t*aircraft_fly_ctrl)
+{
+
+	if(aircraft_fly_ctrl->aircraft_behaviour==Aircraft_ZERO_FORCE)
+	{
+		__HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, 1000);//电机停转
+		__HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_4, 1000);//电机停转	
+	}
+	else if(aircraft_fly_ctrl->aircraft_behaviour==Aircraft_READY_1)
+	{
+		PID_P_pitch=0.05*aircraft_fly_ctrl->remote_data->Left_Y;
+		PID_P_roll=0.05*aircraft_fly_ctrl->remote_data->S2;
+		PID_R[0] =PID_P_roll;
+    PID_P1[0] =PID_P_pitch;
+    PID_P2[0] =PID_P_pitch;
+		
+		PID_control_roll.Kp = PID_R[0];
+    PID_control_pitch.Kp = PID_P1[0];
+		
+        // PID 控制
+		
+//      
+		    ROLL = PID_calc(&PID_control_roll, aircraft_fly_ctrl->IMU_data->INS_angle[1], 0.0f);
+        PITCH = PID_calc(&PID_control_pitch, aircraft_fly_ctrl->IMU_data->INS_angle[2], 0.0f);
+				
+         roll_angle = 900 + ((ROLL*0.5 + 180) * (1200.0f / 360.0f))+roll_bias; 
+         pitch1_angle = 900 + ((PITCH*0.5 + 180) * (1200.0f / 360.0f))+pitch1_bias;  // 将 -180 到 180 的角度映射到 900 到 2100
+         pitch2_angle = 900 + (((-PITCH)*0.5 + 180) * (1200.0f / 360.0f)) + pitch2_bias; 
+		
+		     if (roll_angle > 2100.0f)
+        {
+            roll_angle = 2100.0f;
+        }
+        else if (roll_angle < 900.0f)
+        {
+            roll_angle = 900.0f;
+        }
+				
+				if (pitch1_angle > 2100.0f)
+        {
+            pitch1_angle = 2100.0f;
+        }
+        else if (pitch1_angle < 900.0f)
+        {
+            pitch1_angle = 900.0f;
+        }
+
+				if (pitch2_angle > 2100.0f)
+        {
+            pitch2_angle = 2100.0f;
+        }
+        else if (pitch2_angle < 900.0f)
+        {
+            pitch2_angle = 900.0f;
+        }
+
+		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_2, pitch1_angle);///舵机
+		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_3, roll_angle);///舵机
+		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_4, pitch2_angle);///舵机
+				
+//		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_2, pitch1_bias+1500);///舵机
+//		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_3, pitch2_bias+1500);///舵机
+//		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_4, roll_bias+1500);///舵机
+				
+				 if (aircraft_fly_ctrl->remote_data->Right_X<-50)
+        {
+            roll_bias -= 0.2;
+        }
+      else if (aircraft_fly_ctrl->remote_data->Right_X>50)
+        {
+            roll_bias += 0.2;
+        }
+		  if (aircraft_fly_ctrl->remote_data->Right_Y  <-50)
+		    {
+            pitch1_bias -=0.2;
+        }
+      else if (aircraft_fly_ctrl->remote_data->Right_Y>50)
+        {
+            pitch1_bias +=0.2;
+        }
+		   if (aircraft_fly_ctrl->remote_data->Left_X  <-50)
+		    {
+            pitch2_bias -=0.2;
+        }
+      else if (aircraft_fly_ctrl->remote_data->Left_X>50)
+        {
+            pitch2_bias +=0.2;
+        }
+	}
+
+	else if(aircraft_fly_ctrl->aircraft_behaviour==Aircraft_RUN)
+	{
+			 servo_value=1000+(int)(aircraft_fly_ctrl->remote_data->Left_Y)*9;
+     __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, servo_value);//电机
+     __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_4, servo_value);//电机
+        // PID 控制
+      
+		    ROLL = PID_calc(&PID_control_roll, aircraft_fly_ctrl->IMU_data->INS_angle[1], 0.0f);
+        PITCH = PID_calc(&PID_control_pitch, aircraft_fly_ctrl->IMU_data->INS_angle[2], 0.0f);
+				
+    		 roll_angle = 900 + ((ROLL*0.5 + 180) * (1200.0f / 360.0f))+roll_bias; 
+         pitch1_angle = 900 + ((PITCH*0.5 + 180) * (1200.0f / 360.0f))+pitch1_bias;  // 将 -180 到 180 的角度映射到 900 到 2100
+         pitch2_angle = 900 + (((-PITCH)*0.5 + 180) * (1200.0f / 360.0f)) + pitch2_bias; 
+		
+		     if (roll_angle > 2100.0f)
+        {
+            roll_angle = 2100.0f;
+        }
+        else if (roll_angle < 900.0f)
+        {
+            roll_angle = 900.0f;
+        }
+				
+				if (pitch1_angle > 2100.0f)
+        {
+            pitch1_angle = 2100.0f;
+        }
+        else if (pitch1_angle < 900.0f)
+        {
+            pitch1_angle = 900.0f;
+        }
+
+				if (pitch2_angle > 2100.0f)
+        {
+            pitch2_angle = 2100.0f;
+        }
+        else if (pitch2_angle < 900.0f)
+        {
+            pitch2_angle = 900.0f;
+        }
+
+		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_2, pitch1_angle);///舵机
+		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_3, roll_angle);///舵机
+		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_4, pitch2_angle);///舵机
+	}
+}
+
+
+
+//else if(aircraft_fly_ctrl->aircraft_behaviour==Aircraft_READY_2)
+//	{
+//		PID_P_pitch=0.05*aircraft_fly_ctrl->remote_data->Left_Y;
+//		PID_P_roll=0.05*aircraft_fly_ctrl->remote_data->S2;
+//		PID_R[0] =PID_P_roll;
+//    PID_P1[0] =PID_P_pitch;
+//    PID_P2[0] =PID_P_pitch;
+//		
+//		PID_control_roll.Kp = PID_P1[0];
+//    PID_control_pitch.Kp = PID_R[ 0];
+//		
+//        // PID 控制
+//		
+//		
+////        Roll_Rate_Set = PID_calc(&PID_control_pitch,aircraft_fly_ctrl->IMU_data->INS_angle[1], 0.0f);  // 传入 roll，目标为 0
+////        Pitch_Rate_Set = PID_calc(&PID_control_roll, aircraft_fly_ctrl->IMU_data->INS_angle[2], 0.0f);      // 传入 pitch，目标为 0
+//////      YAW = PID_calc(&PID_control_yaw, aircraft_fly_ctrl->IMU_data->INS_angle[0], 0.0f);     // 传入 yaw，目标为 0
+//      
+//		    ROLL = PID_calc(&PID_control_roll, aircraft_fly_ctrl->IMU_data->INS_gyro[1], 0.0f);
+//        PITCH = PID_calc(&PID_control_pitch, aircraft_fly_ctrl->IMU_data->INS_gyro[2], 0.0f);
+//		
+////		    roll_angle =1500.0f + ROLL + roll_bias;
+////		    pitch1_angle =1500.0f + PITCH + pitch1_bias;
+////		    pitch2_angle =1500.0f - PITCH + pitch2_bias;
+//				
+//		     if (roll_angle > 2100.0f)
+//        {
+//            roll_angle = 2100.0f;
+//        }
+//        else if (roll_angle < 900.0f)
+//        {
+//            roll_angle = 900.0f;
+//        }
+//				
+//				if (pitch1_angle > 2100.0f)
+//        {
+//            pitch1_angle = 2100.0f;
+//        }
+//        else if (pitch1_angle < 900.0f)
+//        {
+//            pitch1_angle = 900.0f;
+//        }
+
+//				if (pitch2_angle > 2100.0f)
+//        {
+//            pitch2_angle = 2100.0f;
+//        }
+//        else if (pitch2_angle < 900.0f)
+//        {
+//            pitch2_angle = 900.0f;
+//        }
+//		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_2, pitch1_angle);///舵机
+//		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_3, roll_angle);///舵机
+//		 __HAL_TIM_SetCompare(&htim5, TIM_CHANNEL_4, pitch2_angle);///舵机			
+//				 if (aircraft_fly_ctrl->remote_data->Right_X<-50)
+//        {
+//            roll_bias -= 0.2;
+//        }
+//      else if (aircraft_fly_ctrl->remote_data->Right_X>50)
+//        {
+//            roll_bias += 0.2;
+//        }
+//		  if (aircraft_fly_ctrl->remote_data->Right_Y  <-50)
+//		    {
+//            pitch1_bias -=0.2;
+//        }
+//      else if (aircraft_fly_ctrl->remote_data->Right_Y>50)
+//        {
+//            pitch1_bias +=0.2;
+//        }
+//		   if (aircraft_fly_ctrl->remote_data->Left_X  <-50)
+//		    {
+//            pitch2_bias -=0.2;
+//        }
+//      else if (aircraft_fly_ctrl->remote_data->Left_X>50)
+//        {
+//            pitch2_bias +=0.2;
+//        }
+//	}
