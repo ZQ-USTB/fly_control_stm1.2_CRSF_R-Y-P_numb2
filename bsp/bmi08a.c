@@ -343,7 +343,7 @@ int8_t bmi08a_init(struct bmi08_dev *dev)
     uint8_t chip_id = 0;
 
     /* Check for null pointer in the device structure */
-    rslt = dev_null_ptr_check(dev);//¼ì²éÊµÀı»¯½á¹¹ÌåÖĞapi½Ó¿ÚÊÇ·ñ¸³Óèµ÷ÓÃ
+    rslt = dev_null_ptr_check(dev);//ï¿½ï¿½ï¿½Êµï¿½ï¿½ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½ï¿½ï¿½apiï¿½Ó¿ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
     /* Proceed if null check is fine */
     if (rslt == BMI08_OK)
@@ -353,7 +353,7 @@ int8_t bmi08a_init(struct bmi08_dev *dev)
         if (dev->intf == BMI08_SPI_INTF)
         {
             /* Set dummy byte in case of SPI interface */
-            dev->dummy_byte = BMI08_ENABLE;//Õ¼Î»×Ö½Ú
+            dev->dummy_byte = BMI08_ENABLE;//Õ¼Î»ï¿½Ö½ï¿½
 
             /* Dummy read of Chip-ID in SPI mode */
             rslt = set_get_regs(BMI08_REG_ACCEL_CHIP_ID, &chip_id, BMI08_REG_ACCEL_CHIP_ID_LENGTH, dev, GET_FUNC);
@@ -366,14 +366,14 @@ int8_t bmi08a_init(struct bmi08_dev *dev)
         }
 
         if (rslt == BMI08_OK)
-        {  //Ğ¾Æ¬¶ÁÈ¡ID
+        {  //Ğ¾Æ¬ï¿½ï¿½È¡ID
             rslt = set_get_regs(BMI08_REG_ACCEL_CHIP_ID, &chip_id, BMI08_REG_ACCEL_CHIP_ID_LENGTH, dev, GET_FUNC);
            
             if (rslt == BMI08_OK)
             {
                 /* Store the chip ID in dev structure */
                 dev->accel_chip_id = chip_id;
-							  error_id=chip_id;
+							  
             }
         }
     }
@@ -661,7 +661,7 @@ int8_t bmi08a_soft_reset(struct bmi08_dev *dev)
             }
         }
     }
-     test_flag=rslt;
+     
     return rslt;
 }
 

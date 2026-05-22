@@ -489,11 +489,11 @@ void INS_task(void const *pvParameters)
 
 							       if (!ekf_initialized) {
 
-                EKF_Init(&alt_ekf, spl06_inst.altitude_filtered);
+                EKF_Init(&alt_ekf, spl06_inst.altitude);
                 ekf_initialized = 1;
             } else {
 
-                EKF_Update(&alt_ekf, spl06_inst.altitude_filtered);
+                EKF_Update(&alt_ekf, spl06_inst.altitude);
             }
 
 
@@ -502,7 +502,7 @@ void INS_task(void const *pvParameters)
             }
 
 
-            SPL06_Start_Read_IT(&spl06_inst);
+            SPL06_Start_Read_DMA(&spl06_inst);
         }
 
 // ==========================================================

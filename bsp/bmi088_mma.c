@@ -683,10 +683,10 @@ int8_t bmi088_mma_init(struct bmi08_dev *dev)
     
     if (rslt == BMI08_OK)
     {
-        /* Structure to define the default values for axes re-mapping *///´«¸ÐÆ÷ÖáÖØÓ³Éä£¬°²×°Î»ÖÃ×ø±êÏµ¸Ä±äÊ±µ÷ÕûÕâÀï
-        struct bmi08_axes_remap axes_remap = {
-            .x_axis = BMI088_MM_MAP_X_AXIS, .x_axis_sign = BMI088_MM_MAP_POSITIVE, .y_axis = BMI088_MM_MAP_Y_AXIS,
-            .y_axis_sign = BMI088_MM_MAP_POSITIVE, .z_axis = BMI088_MM_MAP_Z_AXIS, .z_axis_sign = BMI088_MM_MAP_POSITIVE
+        /* Structure to define the default values for axes re-mapping *///ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó³ï¿½ä£¬ï¿½ï¿½×°Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½Ä±ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+      struct bmi08_axes_remap axes_remap = {
+            .x_axis = BMI088_MM_MAP_Z_AXIS, .x_axis_sign = BMI088_MM_MAP_POSITIVE, .y_axis = BMI088_MM_MAP_X_AXIS,
+            .y_axis_sign = BMI088_MM_MAP_POSITIVE, .z_axis = BMI088_MM_MAP_Y_AXIS, .z_axis_sign = BMI088_MM_MAP_NEGATIVE
         };
 
         /* Check for chip id validity */

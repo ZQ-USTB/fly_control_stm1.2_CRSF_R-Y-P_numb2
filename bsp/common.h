@@ -131,7 +131,7 @@ void bmi08_check_rslt(const char api_name[], int8_t rslt);
  *  @return void.
  */
 void bmi08_coines_deinit(void);
-
+void HAL_Delay_us_init(uint16_t SYSCLK);
 
 #ifdef __cplusplus
 }

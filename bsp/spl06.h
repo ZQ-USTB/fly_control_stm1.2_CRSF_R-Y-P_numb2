@@ -28,16 +28,13 @@ typedef struct {
     float temperature;  // 摄氏度
     float pressure;     // 气压 (Pa)
     float altitude;     // 绝对高度 (m)
-		float altitude_filtered;
-		float test_altitude;     // 绝对高度 (m)
-		float test_altitude_filtered;
     
 } SPL06_t;
 
 // --- API 函数声明 ---
 uint8_t SPL06_Init(SPL06_t *dev, I2C_HandleTypeDef *hi2c);
-void SPL06_Start_Read_IT(SPL06_t *dev);
+void SPL06_Start_Read_DMA(SPL06_t *dev);
 void SPL06_Process_Data(SPL06_t *dev);
-void SPL06_On_IT_Complete(SPL06_t *dev); // 放在中断回调中
+void SPL06_On_DMA_Complete(SPL06_t *dev); // 放在中断回调中
 
 #endif

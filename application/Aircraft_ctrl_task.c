@@ -2,10 +2,9 @@
 #include "cmsis_os.h"
 #include "remote_control.h"
 #include "tim.h"
-aircraft_control_t aircraft_control;
 #include "pid.h"
 #include "INS_task.h"
-
+aircraft_control_t aircraft_control;
 
 pid_type_def PID_control_pitch;  
 pid_type_def PID_control_roll;  

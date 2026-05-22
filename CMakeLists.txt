@@ -11,11 +11,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
-# 关闭未使用函数的警告
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
 
-# 如果你连未使用变量的警告也不想看到，可以再加一个：
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable")
 
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -49,33 +45,36 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
+    application/Aircraft_ctrl_task.c
+    application/INS_task.c 
+    application/remote_control.c
     algorithm/AHRS_middleware.c
+    algorithm/pid.c
+    algorithm/MahonyAHRS.c
     algorithm/biquad_filter.c
     algorithm/ekf.c
-    algorithm/MahonyAHRS.c
-    algorithm/pid.c
-    
-    application/Aircraft_ctrl_task.c
-    application/INS_task.c
-    application/remote_control.c
-    
-    bsp/bmi088_anymotiona.c
-    bsp/bmi088_mma.c
     bsp/bmi08a.c
     bsp/bmi08g.c
     bsp/bmi08xa.c
+    bsp/bmi088_anymotiona.c
+    bsp/bmi088_mma.c
     bsp/common.c
-    # bsp/elrs.c
-    bsp/qmc6310.c
+    bsp/ringbuffer.c
     bsp/spl06.c
+    bsp/qmc6310.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-    algorithm
     application
+    algorithm
     bsp
+    Third_party
+    Third_party/mavlink_c/common
+    Third_party/mavlink_c
+    Third_party/mavlink_c/minimal
+    Third_party/mavlink_c/standard
 )
 
 # Add project symbols (macros)
@@ -93,4 +92,3 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
-add_compile_definitions(__FPU_PRESENT=1U)

@@ -1,8 +1,6 @@
 #include "spl06.h"
 #include <math.h>
 #include "main.h"
-#include "ekf.h"
-
 // I2C 地址 (SDO=GND -> 0x76, 左移一位 -> 0xEC)
 #define SPL06_I2C_ADDR (0x76 << 1)
 
@@ -63,7 +61,7 @@ uint8_t SPL06_Init(SPL06_t *dev, I2C_HandleTypeDef *hi2c) {
     // 4. 配置传感器 (16x 过采样)
     // 压力: 16x -> Scale Factor = 253952
     dev->kP = 253952.0f;
-    write_reg_block(dev, SPL06_REG_PRS_CFG, 0x54); // 16x oversampling
+    write_reg_block(dev, SPL06_REG_PRS_CFG, 0x14); // 16x oversampling
 
     // 温度: 1x -> Scale Factor = 524288
     dev->kT = 524288.0f;
@@ -80,7 +78,7 @@ uint8_t SPL06_Init(SPL06_t *dev, I2C_HandleTypeDef *hi2c) {
 }
 
 // --- 步骤1: 启动 DMA 读取 (非阻塞) ---
-void SPL06_Start_Read_IT(SPL06_t *dev) {
+void SPL06_Start_Read_DMA(SPL06_t *dev) {
     if (dev->dma_busy) return; // 上一次还在传，跳过
 
     dev->dma_busy = 1;
@@ -93,7 +91,7 @@ void SPL06_Start_Read_IT(SPL06_t *dev) {
 }
 
 // --- 步骤2: 中断回调 (极简，只置位) ---
-void SPL06_On_IT_Complete(SPL06_t *dev) {
+void SPL06_On_DMA_Complete(SPL06_t *dev) {
     dev->dma_busy = 0;
     dev->data_ready = 1; // 告诉任务数据好了
 }
@@ -103,7 +101,7 @@ void SPL06_Process_Data(SPL06_t *dev) {
     if (!dev->data_ready) return;
 
     // H7 必须操作: DMA 写了 RAM，CPU 读之前要清除 Cache
-   // SCB_InvalidateDCache_by_Addr((uint32_t*)dev->rx_buf, 6);
+    //SCB_InvalidateDCache_by_Addr((uint32_t*)dev->rx_buf, 6);
 
     uint8_t *buf = dev->rx_buf;
     int32_t raw_p, raw_t;
@@ -134,14 +132,6 @@ void SPL06_Process_Data(SPL06_t *dev) {
 
     // 4. 高度计算
     dev->altitude = 44330.0f * (1.0f - powf(dev->pressure / 101325.0f, 0.1903f));
-		
-		dev->test_altitude=dev->altitude*100;     // 绝对高度 (m)
 
-		
-    // 在这里调用一阶低通滤波
-    dev->altitude_filtered = LowPassFilter_1st(dev->altitude);
-		
-		dev->test_altitude_filtered=dev->altitude_filtered*100; 
-		
     dev->data_ready = 0; // 清除标志
 }
